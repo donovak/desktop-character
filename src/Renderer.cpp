@@ -4,6 +4,11 @@
 #include "DebugLog.h"
 
 namespace {
+constexpr float DEBUG_HOVER_STROKE_WIDTH = 1.5f;
+constexpr float DEBUG_IMAGE_STROKE_WIDTH = 1.0f;
+constexpr float DEBUG_ANCHOR_MARK_SIZE = 4.0f;
+constexpr float DEBUG_TEXT_TOP_GAP = 1.0f;
+
 D2D1_COLOR_F overlayTransparentColor()
 {
     return D2D1::ColorF(
@@ -52,6 +57,10 @@ bool Renderer::initialize(HWND hwnd, bool transparentBackground)
         return false;
     }
 
+    m_iconTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+    m_iconTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+    m_iconTextFormat->SetWordWrapping(DWRITE_WORD_WRAPPING_WRAP);
+
     return createDeviceResources(hwnd);
 }
 
@@ -76,7 +85,7 @@ void Renderer::resizeIfNeeded(unsigned int width, unsigned int height)
 void Renderer::render(
     const Character& character,
     const std::vector<DesktopIcon>& desktopIcons,
-    bool showIconDebugOverlay,
+    const IconDebugOverlaySettings& iconDebugOverlaySettings,
     POINT clientScreenOrigin)
 {
     if (m_renderTarget == nullptr && !createDeviceResources(m_hwnd)) {
@@ -90,8 +99,8 @@ void Renderer::render(
     const D2D1_RECT_F characterRect = character.bounds();
     m_renderTarget->FillRectangle(characterRect, m_characterBrush.Get());
 
-    if (showIconDebugOverlay) {
-        drawIconDebugOverlay(desktopIcons, clientScreenOrigin);
+    if (iconDebugOverlaySettings.showOverlay) {
+        drawIconDebugOverlay(desktopIcons, iconDebugOverlaySettings, clientScreenOrigin);
     }
 
     const HRESULT result = m_renderTarget->EndDraw();
@@ -142,10 +151,30 @@ bool Renderer::createDeviceResources(HWND hwnd)
 
     result = m_renderTarget->CreateSolidColorBrush(
         D2D1::ColorF(0.95f, 0.80f, 0.24f, 0.95f),
-        m_iconBoundsBrush.ReleaseAndGetAddressOf());
+        m_iconHoverBoundsBrush.ReleaseAndGetAddressOf());
 
     if (FAILED(result)) {
-        debugLog(L"CreateSolidColorBrush failed for icon bounds.");
+        debugLog(L"CreateSolidColorBrush failed for icon hover bounds.");
+        discardDeviceResources();
+        return false;
+    }
+
+    result = m_renderTarget->CreateSolidColorBrush(
+        D2D1::ColorF(0.15f, 0.72f, 1.0f, 0.95f),
+        m_iconImageBoundsBrush.ReleaseAndGetAddressOf());
+
+    if (FAILED(result)) {
+        debugLog(L"CreateSolidColorBrush failed for icon image bounds.");
+        discardDeviceResources();
+        return false;
+    }
+
+    result = m_renderTarget->CreateSolidColorBrush(
+        D2D1::ColorF(1.0f, 0.2f, 0.2f, 0.95f),
+        m_iconAnchorBrush.ReleaseAndGetAddressOf());
+
+    if (FAILED(result)) {
+        debugLog(L"CreateSolidColorBrush failed for icon anchors.");
         discardDeviceResources();
         return false;
     }
@@ -166,33 +195,76 @@ bool Renderer::createDeviceResources(HWND hwnd)
 void Renderer::discardDeviceResources()
 {
     m_iconTextBrush.Reset();
-    m_iconBoundsBrush.Reset();
+    m_iconAnchorBrush.Reset();
+    m_iconImageBoundsBrush.Reset();
+    m_iconHoverBoundsBrush.Reset();
     m_characterBrush.Reset();
     m_backgroundBrush.Reset();
     m_renderTarget.Reset();
 }
 
-void Renderer::drawIconDebugOverlay(const std::vector<DesktopIcon>& desktopIcons, POINT clientScreenOrigin)
+void Renderer::drawIconDebugOverlay(
+    const std::vector<DesktopIcon>& desktopIcons,
+    const IconDebugOverlaySettings& settings,
+    POINT clientScreenOrigin)
 {
-    if (m_iconBoundsBrush == nullptr || m_iconTextBrush == nullptr || m_iconTextFormat == nullptr) {
+    if (m_iconHoverBoundsBrush == nullptr
+        || m_iconImageBoundsBrush == nullptr
+        || m_iconAnchorBrush == nullptr
+        || m_iconTextBrush == nullptr
+        || m_iconTextFormat == nullptr) {
         return;
     }
 
     for (const DesktopIcon& icon : desktopIcons) {
-        const D2D1_RECT_F iconRect = D2D1::RectF(
+        const D2D1_RECT_F hoverRect = D2D1::RectF(
             static_cast<float>(icon.screenBounds.left - clientScreenOrigin.x),
             static_cast<float>(icon.screenBounds.top - clientScreenOrigin.y),
             static_cast<float>(icon.screenBounds.right - clientScreenOrigin.x),
             static_cast<float>(icon.screenBounds.bottom - clientScreenOrigin.y));
 
-        m_renderTarget->DrawRectangle(iconRect, m_iconBoundsBrush.Get(), 1.5f);
+        const D2D1_RECT_F imageRect = D2D1::RectF(
+            static_cast<float>(icon.imageBounds.left - clientScreenOrigin.x),
+            static_cast<float>(icon.imageBounds.top - clientScreenOrigin.y),
+            static_cast<float>(icon.imageBounds.right - clientScreenOrigin.x),
+            static_cast<float>(icon.imageBounds.bottom - clientScreenOrigin.y));
 
-        if (!icon.displayName.empty()) {
+        const D2D1_RECT_F labelRect = D2D1::RectF(
+            static_cast<float>(icon.labelBounds.left - clientScreenOrigin.x),
+            static_cast<float>(icon.labelBounds.top - clientScreenOrigin.y),
+            static_cast<float>(icon.labelBounds.right - clientScreenOrigin.x),
+            static_cast<float>(icon.labelBounds.bottom - clientScreenOrigin.y));
+
+        const float anchorX = static_cast<float>(icon.anchorPoint.x - clientScreenOrigin.x);
+        const float anchorY = static_cast<float>(icon.anchorPoint.y - clientScreenOrigin.y);
+
+        if (settings.showHoverBounds) {
+            m_renderTarget->DrawRectangle(hoverRect, m_iconHoverBoundsBrush.Get(), DEBUG_HOVER_STROKE_WIDTH);
+        }
+
+        if (settings.showImageBounds) {
+            m_renderTarget->DrawRectangle(imageRect, m_iconImageBoundsBrush.Get(), DEBUG_IMAGE_STROKE_WIDTH);
+        }
+
+        if (settings.showAnchors) {
+            m_renderTarget->DrawLine(
+                D2D1::Point2F(anchorX - DEBUG_ANCHOR_MARK_SIZE, anchorY),
+                D2D1::Point2F(anchorX + DEBUG_ANCHOR_MARK_SIZE, anchorY),
+                m_iconAnchorBrush.Get(),
+                DEBUG_IMAGE_STROKE_WIDTH);
+            m_renderTarget->DrawLine(
+                D2D1::Point2F(anchorX, anchorY - DEBUG_ANCHOR_MARK_SIZE),
+                D2D1::Point2F(anchorX, anchorY + DEBUG_ANCHOR_MARK_SIZE),
+                m_iconAnchorBrush.Get(),
+                DEBUG_IMAGE_STROKE_WIDTH);
+        }
+
+        if (settings.showLabels && !icon.displayName.empty()) {
             const D2D1_RECT_F textRect = D2D1::RectF(
-                iconRect.left,
-                iconRect.bottom + 2.0f,
-                iconRect.left + 220.0f,
-                iconRect.bottom + 24.0f);
+                labelRect.left,
+                labelRect.top + DEBUG_TEXT_TOP_GAP,
+                labelRect.right,
+                labelRect.bottom);
 
             m_renderTarget->DrawTextW(
                 icon.displayName.c_str(),

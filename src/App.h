@@ -32,6 +32,6 @@ private:
     Character m_character;
     DesktopIconService m_desktopIconService;
     std::vector<DesktopIcon> m_desktopIcons;
-    bool m_showIconDebugOverlay = true;
+    IconDebugOverlaySettings m_iconDebugOverlaySettings;
     std::chrono::steady_clock::time_point m_lastFrameTime;
 };

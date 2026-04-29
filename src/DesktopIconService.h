@@ -7,6 +7,10 @@
 struct DesktopIcon {
     std::wstring displayName;
     RECT screenBounds {};
+    RECT imageBounds {};
+    RECT labelBounds {};
+    POINT anchorPoint {};
+    int labelLineCount = 1;
     std::wstring debugIdentifier;
     std::wstring filesystemPath;
 };

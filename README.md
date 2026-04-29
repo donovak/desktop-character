@@ -50,16 +50,27 @@ Useful overlay flags:
 
 The icon debug overlay is on by default.
 
-- Press `F2` to toggle icon rectangles and labels.
+- Press `F2` to toggle all icon debug drawing.
+- Press `F3` to toggle yellow hover/select bounds.
+- Press `F4` to toggle blue icon image bounds.
 - Press `F5` to refresh the desktop icon cache.
+- Press `F6` to toggle red Shell anchor marks.
+- Press `F7` to toggle debug text labels.
 - Press `Esc` to close the prototype.
 
 Icon rectangles are mapped from desktop Shell view coordinates into the app client area by converting the Shell view icon position to screen coordinates, then subtracting the app window client origin. This is intended primarily for `DesktopOverlay`; in `NormalWindow`, desktop icon rectangles may be outside or offset from the small debug window.
 
+Debug colors:
+
+- Red cross: Shell-provided icon anchor/position.
+- Blue rectangle: estimated icon image area.
+- Yellow rectangle: estimated full hover/select area.
+
 Current limitations:
 
-- Bounds are estimated from the desktop icon position plus system icon spacing.
-- Labels use a simple DirectWrite debug rendering path.
+- Bounds are estimated from the Shell icon position, Shell icon spacing, current icon size when available, and DirectWrite label line measurement.
+- One-line and two-line labels use different estimated hover heights, but Explorer can vary by DPI, icon size, label wrapping, theme, and desktop settings.
+- Tuning values live near the top of `src/DesktopIconService.cpp` and `src/Renderer.cpp`; `IMAGE_LEFT_OFFSET` and `IMAGE_TOP_OFFSET` adjust the Shell-position-to-image relationship, and label width is derived from Shell spacing and clamped with `MIN_LABEL_WIDTH` / `MAX_LABEL_WIDTH`.
 - The cache refresh is manual/startup only; full shell change notifications are left for a later phase.
 - Some virtual or special desktop items may not have filesystem paths.
 

@@ -102,8 +102,28 @@ void App::update(float deltaSeconds)
     }
 
     if (m_input.shouldToggleIconDebugOverlay()) {
-        m_showIconDebugOverlay = !m_showIconDebugOverlay;
-        debugLog(m_showIconDebugOverlay ? L"Icon debug overlay enabled." : L"Icon debug overlay disabled.");
+        m_iconDebugOverlaySettings.showOverlay = !m_iconDebugOverlaySettings.showOverlay;
+        debugLog(m_iconDebugOverlaySettings.showOverlay ? L"Icon debug overlay enabled." : L"Icon debug overlay disabled.");
+    }
+
+    if (m_input.shouldToggleIconHoverBounds()) {
+        m_iconDebugOverlaySettings.showHoverBounds = !m_iconDebugOverlaySettings.showHoverBounds;
+        debugLog(m_iconDebugOverlaySettings.showHoverBounds ? L"Icon hover bounds enabled." : L"Icon hover bounds disabled.");
+    }
+
+    if (m_input.shouldToggleIconImageBounds()) {
+        m_iconDebugOverlaySettings.showImageBounds = !m_iconDebugOverlaySettings.showImageBounds;
+        debugLog(m_iconDebugOverlaySettings.showImageBounds ? L"Icon image bounds enabled." : L"Icon image bounds disabled.");
+    }
+
+    if (m_input.shouldToggleIconAnchors()) {
+        m_iconDebugOverlaySettings.showAnchors = !m_iconDebugOverlaySettings.showAnchors;
+        debugLog(m_iconDebugOverlaySettings.showAnchors ? L"Icon anchors enabled." : L"Icon anchors disabled.");
+    }
+
+    if (m_input.shouldToggleIconLabels()) {
+        m_iconDebugOverlaySettings.showLabels = !m_iconDebugOverlaySettings.showLabels;
+        debugLog(m_iconDebugOverlaySettings.showLabels ? L"Icon labels enabled." : L"Icon labels disabled.");
     }
 
     if (m_input.shouldRefreshDesktopIcons()) {
@@ -123,7 +143,7 @@ void App::render()
     m_renderer.render(
         m_character,
         m_desktopIcons,
-        m_showIconDebugOverlay,
+        m_iconDebugOverlaySettings,
         m_window.clientScreenOrigin());
 }
 

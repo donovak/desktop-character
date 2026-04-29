@@ -9,6 +9,14 @@
 #include <wrl/client.h>
 #include <windows.h>
 
+struct IconDebugOverlaySettings {
+    bool showOverlay = true;
+    bool showHoverBounds = true;
+    bool showImageBounds = true;
+    bool showAnchors = true;
+    bool showLabels = true;
+};
+
 class Renderer {
 public:
     Renderer() = default;
@@ -18,19 +26,24 @@ public:
     void render(
         const Character& character,
         const std::vector<DesktopIcon>& desktopIcons,
-        bool showIconDebugOverlay,
+        const IconDebugOverlaySettings& iconDebugOverlaySettings,
         POINT clientScreenOrigin);
 
 private:
     bool createDeviceResources(HWND hwnd);
     void discardDeviceResources();
-    void drawIconDebugOverlay(const std::vector<DesktopIcon>& desktopIcons, POINT clientScreenOrigin);
+    void drawIconDebugOverlay(
+        const std::vector<DesktopIcon>& desktopIcons,
+        const IconDebugOverlaySettings& settings,
+        POINT clientScreenOrigin);
 
     Microsoft::WRL::ComPtr<ID2D1Factory> m_factory;
     Microsoft::WRL::ComPtr<ID2D1HwndRenderTarget> m_renderTarget;
     Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_characterBrush;
     Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_backgroundBrush;
-    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_iconBoundsBrush;
+    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_iconHoverBoundsBrush;
+    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_iconImageBoundsBrush;
+    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_iconAnchorBrush;
     Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_iconTextBrush;
     Microsoft::WRL::ComPtr<IDWriteFactory> m_writeFactory;
     Microsoft::WRL::ComPtr<IDWriteTextFormat> m_iconTextFormat;
