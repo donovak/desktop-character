@@ -138,6 +138,16 @@ RECT DesktopWindow::clientRect() const
     return rect;
 }
 
+POINT DesktopWindow::clientScreenOrigin() const
+{
+    POINT origin {};
+    if (m_hwnd != nullptr) {
+        ClientToScreen(m_hwnd, &origin);
+    }
+
+    return origin;
+}
+
 bool DesktopWindow::isRunning() const
 {
     return m_running;

@@ -27,6 +27,31 @@ bool Renderer::initialize(HWND hwnd, bool transparentBackground)
         return false;
     }
 
+    const HRESULT writeFactoryResult = DWriteCreateFactory(
+        DWRITE_FACTORY_TYPE_SHARED,
+        __uuidof(IDWriteFactory),
+        reinterpret_cast<IUnknown**>(m_writeFactory.GetAddressOf()));
+
+    if (FAILED(writeFactoryResult)) {
+        debugLog(L"DWriteCreateFactory failed.");
+        return false;
+    }
+
+    const HRESULT textFormatResult = m_writeFactory->CreateTextFormat(
+        L"Segoe UI",
+        nullptr,
+        DWRITE_FONT_WEIGHT_NORMAL,
+        DWRITE_FONT_STYLE_NORMAL,
+        DWRITE_FONT_STRETCH_NORMAL,
+        12.0f,
+        L"",
+        m_iconTextFormat.GetAddressOf());
+
+    if (FAILED(textFormatResult)) {
+        debugLog(L"CreateTextFormat failed.");
+        return false;
+    }
+
     return createDeviceResources(hwnd);
 }
 
@@ -48,7 +73,11 @@ void Renderer::resizeIfNeeded(unsigned int width, unsigned int height)
     }
 }
 
-void Renderer::render(const Character& character)
+void Renderer::render(
+    const Character& character,
+    const std::vector<DesktopIcon>& desktopIcons,
+    bool showIconDebugOverlay,
+    POINT clientScreenOrigin)
 {
     if (m_renderTarget == nullptr && !createDeviceResources(m_hwnd)) {
         return;
@@ -60,6 +89,10 @@ void Renderer::render(const Character& character)
 
     const D2D1_RECT_F characterRect = character.bounds();
     m_renderTarget->FillRectangle(characterRect, m_characterBrush.Get());
+
+    if (showIconDebugOverlay) {
+        drawIconDebugOverlay(desktopIcons, clientScreenOrigin);
+    }
 
     const HRESULT result = m_renderTarget->EndDraw();
     if (result == D2DERR_RECREATE_TARGET) {
@@ -107,12 +140,66 @@ bool Renderer::createDeviceResources(HWND hwnd)
         return false;
     }
 
+    result = m_renderTarget->CreateSolidColorBrush(
+        D2D1::ColorF(0.95f, 0.80f, 0.24f, 0.95f),
+        m_iconBoundsBrush.ReleaseAndGetAddressOf());
+
+    if (FAILED(result)) {
+        debugLog(L"CreateSolidColorBrush failed for icon bounds.");
+        discardDeviceResources();
+        return false;
+    }
+
+    result = m_renderTarget->CreateSolidColorBrush(
+        D2D1::ColorF(0.95f, 0.95f, 0.95f, 0.95f),
+        m_iconTextBrush.ReleaseAndGetAddressOf());
+
+    if (FAILED(result)) {
+        debugLog(L"CreateSolidColorBrush failed for icon text.");
+        discardDeviceResources();
+        return false;
+    }
+
     return true;
 }
 
 void Renderer::discardDeviceResources()
 {
+    m_iconTextBrush.Reset();
+    m_iconBoundsBrush.Reset();
     m_characterBrush.Reset();
     m_backgroundBrush.Reset();
     m_renderTarget.Reset();
+}
+
+void Renderer::drawIconDebugOverlay(const std::vector<DesktopIcon>& desktopIcons, POINT clientScreenOrigin)
+{
+    if (m_iconBoundsBrush == nullptr || m_iconTextBrush == nullptr || m_iconTextFormat == nullptr) {
+        return;
+    }
+
+    for (const DesktopIcon& icon : desktopIcons) {
+        const D2D1_RECT_F iconRect = D2D1::RectF(
+            static_cast<float>(icon.screenBounds.left - clientScreenOrigin.x),
+            static_cast<float>(icon.screenBounds.top - clientScreenOrigin.y),
+            static_cast<float>(icon.screenBounds.right - clientScreenOrigin.x),
+            static_cast<float>(icon.screenBounds.bottom - clientScreenOrigin.y));
+
+        m_renderTarget->DrawRectangle(iconRect, m_iconBoundsBrush.Get(), 1.5f);
+
+        if (!icon.displayName.empty()) {
+            const D2D1_RECT_F textRect = D2D1::RectF(
+                iconRect.left,
+                iconRect.bottom + 2.0f,
+                iconRect.left + 220.0f,
+                iconRect.bottom + 24.0f);
+
+            m_renderTarget->DrawTextW(
+                icon.displayName.c_str(),
+                static_cast<UINT32>(icon.displayName.size()),
+                m_iconTextFormat.Get(),
+                textRect,
+                m_iconTextBrush.Get());
+        }
+    }
 }

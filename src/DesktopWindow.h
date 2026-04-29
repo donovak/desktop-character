@@ -15,6 +15,7 @@ public:
     bool create(HINSTANCE instance, int showCommand, AppConfig config);
     HWND handle() const;
     RECT clientRect() const;
+    POINT clientScreenOrigin() const;
     bool isRunning() const;
     void requestClose();
 

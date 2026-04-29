@@ -10,6 +10,8 @@ add_executable(DesktopCharacter WIN32
     src/AppConfig.h
     src/DebugLog.cpp
     src/DebugLog.h
+    src/DesktopIconService.cpp
+    src/DesktopIconService.h
     src/DesktopWindow.cpp
     src/DesktopWindow.h
     src/Renderer.cpp
@@ -36,4 +38,9 @@ target_compile_definitions(DesktopCharacter PRIVATE
 
 target_link_libraries(DesktopCharacter PRIVATE
     d2d1
+    dwrite
+    ole32
+    oleaut32
+    shlwapi
+    uuid
 )

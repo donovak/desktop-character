@@ -84,6 +84,7 @@ bool App::initialize()
         return false;
     }
 
+    refreshDesktopIcons();
     return true;
 }
 
@@ -100,6 +101,15 @@ void App::update(float deltaSeconds)
         return;
     }
 
+    if (m_input.shouldToggleIconDebugOverlay()) {
+        m_showIconDebugOverlay = !m_showIconDebugOverlay;
+        debugLog(m_showIconDebugOverlay ? L"Icon debug overlay enabled." : L"Icon debug overlay disabled.");
+    }
+
+    if (m_input.shouldRefreshDesktopIcons()) {
+        refreshDesktopIcons();
+    }
+
     m_character.update(m_input.movementDirection(), deltaSeconds);
 }
 
@@ -110,5 +120,14 @@ void App::render()
         static_cast<unsigned int>(clientRect.right - clientRect.left),
         static_cast<unsigned int>(clientRect.bottom - clientRect.top));
 
-    m_renderer.render(m_character);
+    m_renderer.render(
+        m_character,
+        m_desktopIcons,
+        m_showIconDebugOverlay,
+        m_window.clientScreenOrigin());
+}
+
+void App::refreshDesktopIcons()
+{
+    m_desktopIcons = m_desktopIconService.refresh();
 }

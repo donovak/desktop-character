@@ -2,11 +2,13 @@
 
 #include "AppConfig.h"
 #include "Character.h"
+#include "DesktopIconService.h"
 #include "DesktopWindow.h"
 #include "Input.h"
 #include "Renderer.h"
 
 #include <chrono>
+#include <vector>
 #include <windows.h>
 
 class App {
@@ -19,6 +21,7 @@ private:
     bool initialize();
     void update(float deltaSeconds);
     void render();
+    void refreshDesktopIcons();
 
     HINSTANCE m_instance = nullptr;
     int m_showCommand = SW_SHOWNORMAL;
@@ -27,5 +30,8 @@ private:
     Renderer m_renderer;
     Input m_input;
     Character m_character;
+    DesktopIconService m_desktopIconService;
+    std::vector<DesktopIcon> m_desktopIcons;
+    bool m_showIconDebugOverlay = true;
     std::chrono::steady_clock::time_point m_lastFrameTime;
 };

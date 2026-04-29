@@ -272,5 +272,5 @@ Deliverables:
 
 ## Current Phase
 
-Current phase: **Phase 2**
+Current phase: **Phase 3**
 
