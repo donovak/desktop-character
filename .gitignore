@@ -1,0 +1,33 @@
+# Build output
+/build/
+/out/
+/.vs/
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+
+# VSCode local config
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Visual Studio
+*.suo
+*.user
+*.VC.db
+*.VC.VC.opendb
+x64/
+Debug/
+Release/
+RelWithDebInfo/
+MinSizeRel/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
