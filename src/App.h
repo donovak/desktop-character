@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AppConfig.h"
 #include "Character.h"
 #include "DesktopWindow.h"
 #include "Input.h"
@@ -10,7 +11,7 @@
 
 class App {
 public:
-    App(HINSTANCE instance, int showCommand);
+    App(HINSTANCE instance, int showCommand, AppConfig config);
 
     int run();
 
@@ -21,6 +22,7 @@ private:
 
     HINSTANCE m_instance = nullptr;
     int m_showCommand = SW_SHOWNORMAL;
+    AppConfig m_config;
     DesktopWindow m_window;
     Renderer m_renderer;
     Input m_input;

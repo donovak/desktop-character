@@ -15,8 +15,10 @@ void Character::update(Vector2 movementDirection, float deltaSeconds)
     m_position.y += direction.y * m_speed * deltaSeconds;
 
     if (m_boundsWidth > 0.0f && m_boundsHeight > 0.0f) {
-        m_position.x = std::clamp(m_position.x, 0.0f, m_boundsWidth - m_size);
-        m_position.y = std::clamp(m_position.y, 0.0f, m_boundsHeight - m_size);
+        const float maxX = std::max(0.0f, m_boundsWidth - m_size);
+        const float maxY = std::max(0.0f, m_boundsHeight - m_size);
+        m_position.x = std::clamp(m_position.x, 0.0f, maxX);
+        m_position.y = std::clamp(m_position.y, 0.0f, maxY);
     }
 }
 

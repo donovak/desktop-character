@@ -6,6 +6,10 @@ add_executable(DesktopCharacter WIN32
     src/main.cpp
     src/App.cpp
     src/App.h
+    src/AppConfig.cpp
+    src/AppConfig.h
+    src/DebugLog.cpp
+    src/DebugLog.h
     src/DesktopWindow.cpp
     src/DesktopWindow.h
     src/Renderer.cpp
@@ -27,6 +31,7 @@ target_compile_definitions(DesktopCharacter PRIVATE
     _UNICODE
     WIN32_LEAN_AND_MEAN
     NOMINMAX
+    _WIN32_WINNT=0x0A00
 )
 
 target_link_libraries(DesktopCharacter PRIVATE

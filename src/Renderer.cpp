@@ -1,14 +1,29 @@
 #include "Renderer.h"
 
-bool Renderer::initialize(HWND hwnd)
+#include "AppConfig.h"
+#include "DebugLog.h"
+
+namespace {
+D2D1_COLOR_F overlayTransparentColor()
+{
+    return D2D1::ColorF(
+        OVERLAY_TRANSPARENT_KEY_R / 255.0f,
+        OVERLAY_TRANSPARENT_KEY_G / 255.0f,
+        OVERLAY_TRANSPARENT_KEY_B / 255.0f);
+}
+}
+
+bool Renderer::initialize(HWND hwnd, bool transparentBackground)
 {
     m_hwnd = hwnd;
+    m_transparentBackground = transparentBackground;
 
     const HRESULT factoryResult = D2D1CreateFactory(
         D2D1_FACTORY_TYPE_SINGLE_THREADED,
         m_factory.GetAddressOf());
 
     if (FAILED(factoryResult)) {
+        debugLog(L"D2D1CreateFactory failed.");
         return false;
     }
 
@@ -40,13 +55,17 @@ void Renderer::render(const Character& character)
     }
 
     m_renderTarget->BeginDraw();
-    m_renderTarget->Clear(D2D1::ColorF(0.08f, 0.09f, 0.10f));
+    m_renderTarget->Clear(
+        m_transparentBackground ? overlayTransparentColor() : D2D1::ColorF(0.08f, 0.09f, 0.10f));
 
     const D2D1_RECT_F characterRect = character.bounds();
     m_renderTarget->FillRectangle(characterRect, m_characterBrush.Get());
 
     const HRESULT result = m_renderTarget->EndDraw();
     if (result == D2DERR_RECREATE_TARGET) {
+        discardDeviceResources();
+    } else if (FAILED(result)) {
+        debugLog(L"Direct2D EndDraw failed.");
         discardDeviceResources();
     }
 }
@@ -74,6 +93,7 @@ bool Renderer::createDeviceResources(HWND hwnd)
         m_renderTarget.ReleaseAndGetAddressOf());
 
     if (FAILED(result)) {
+        debugLog(L"CreateHwndRenderTarget failed.");
         return false;
     }
 
@@ -82,6 +102,7 @@ bool Renderer::createDeviceResources(HWND hwnd)
         m_characterBrush.ReleaseAndGetAddressOf());
 
     if (FAILED(result)) {
+        debugLog(L"CreateSolidColorBrush failed.");
         discardDeviceResources();
         return false;
     }

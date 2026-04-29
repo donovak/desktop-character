@@ -10,7 +10,7 @@ class Renderer {
 public:
     Renderer() = default;
 
-    bool initialize(HWND hwnd);
+    bool initialize(HWND hwnd, bool transparentBackground);
     void resizeIfNeeded(unsigned int width, unsigned int height);
     void render(const Character& character);
 
@@ -23,4 +23,5 @@ private:
     Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_characterBrush;
     Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_backgroundBrush;
     HWND m_hwnd = nullptr;
+    bool m_transparentBackground = false;
 };

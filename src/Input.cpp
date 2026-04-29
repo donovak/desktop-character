@@ -12,6 +12,7 @@ bool isKeyDown(int virtualKey)
 void Input::update()
 {
     m_movementDirection = {};
+    m_shouldExit = isKeyDown(VK_ESCAPE);
 
     if (isKeyDown('A') || isKeyDown(VK_LEFT)) {
         m_movementDirection.x -= 1.0f;
@@ -33,4 +34,9 @@ void Input::update()
 Vector2 Input::movementDirection() const
 {
     return m_movementDirection;
+}
+
+bool Input::shouldExit() const
+{
+    return m_shouldExit;
 }

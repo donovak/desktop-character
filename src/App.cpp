@@ -1,5 +1,7 @@
 #include "App.h"
 
+#include "DebugLog.h"
+
 #include <algorithm>
 #include <thread>
 
@@ -8,9 +10,10 @@ constexpr float MAX_DELTA_SECONDS = 0.1f;
 constexpr auto TARGET_FRAME_TIME = std::chrono::milliseconds(16);
 }
 
-App::App(HINSTANCE instance, int showCommand)
+App::App(HINSTANCE instance, int showCommand, AppConfig config)
     : m_instance(instance),
       m_showCommand(showCommand),
+      m_config(config),
       m_character({ 320.0f, 240.0f })
 {
 }
@@ -44,6 +47,10 @@ int App::run()
         m_lastFrameTime = frameStart;
 
         update(std::min(elapsed.count(), MAX_DELTA_SECONDS));
+        if (!m_window.isRunning()) {
+            break;
+        }
+
         render();
 
         const auto frameDuration = std::chrono::steady_clock::now() - frameStart;
@@ -57,7 +64,11 @@ int App::run()
 
 bool App::initialize()
 {
-    if (!m_window.create(m_instance, m_showCommand)) {
+    if (!SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)) {
+        debugLog(L"SetProcessDpiAwarenessContext failed or was already fixed by the process.");
+    }
+
+    if (!m_window.create(m_instance, m_showCommand, m_config)) {
         return false;
     }
 
@@ -66,7 +77,10 @@ bool App::initialize()
         static_cast<float>(clientRect.right - clientRect.left),
         static_cast<float>(clientRect.bottom - clientRect.top));
 
-    if (!m_renderer.initialize(m_window.handle())) {
+    const bool useTransparentBackground =
+        m_config.windowMode == WindowMode::DesktopOverlay && m_config.transparentOverlayBackground;
+
+    if (!m_renderer.initialize(m_window.handle(), useTransparentBackground)) {
         return false;
     }
 
@@ -81,6 +95,11 @@ void App::update(float deltaSeconds)
         static_cast<float>(clientRect.bottom - clientRect.top));
 
     m_input.update();
+    if (m_input.shouldExit()) {
+        m_window.requestClose();
+        return;
+    }
+
     m_character.update(m_input.movementDirection(), deltaSeconds);
 }
 
