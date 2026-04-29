@@ -43,9 +43,10 @@ Useful overlay flags:
 .\build\Debug\DesktopCharacter.exe --desktop-overlay --opaque-overlay
 .\build\Debug\DesktopCharacter.exe --desktop-overlay --enable-click-through
 .\build\Debug\DesktopCharacter.exe --desktop-overlay --dry-run-interactions
+.\build\Debug\DesktopCharacter.exe --desktop-overlay --log-file debug.log
 ```
 
-`--enable-click-through` is a clearly named debug flag and is off by default. `--dry-run-interactions` logs what would open without launching anything. Press `Esc` to close the prototype.
+`--enable-click-through` is a clearly named debug flag and is off by default. `--dry-run-interactions` logs what would open without launching anything. `--log-file <path>` appends debug logs to a file while keeping `OutputDebugStringW` enabled. Press `Esc` to close the prototype.
 
 ## Desktop Icon Debug Overlay
 

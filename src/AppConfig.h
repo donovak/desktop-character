@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <string_view>
 
 enum class WindowMode {
@@ -12,6 +13,7 @@ struct AppConfig {
     bool transparentOverlayBackground = true;
     bool enableClickThrough = false;
     bool dryRunInteractions = false;
+    std::wstring logFilePath;
 
     static AppConfig fromCommandLine(std::wstring_view commandLine);
 };

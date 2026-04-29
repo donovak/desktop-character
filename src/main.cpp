@@ -1,5 +1,6 @@
 #include "App.h"
 #include "AppConfig.h"
+#include "DebugLog.h"
 
 #include <windows.h>
 
@@ -7,6 +8,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR commandLine, int showCo
 {
     const AppConfig config = AppConfig::fromCommandLine(
         commandLine != nullptr ? std::wstring_view(commandLine) : std::wstring_view {});
+
+    configureDebugLogFile(config.logFilePath);
 
     App app(instance, showCommand, config);
     return app.run();
