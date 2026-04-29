@@ -18,6 +18,8 @@ add_executable(DesktopCharacter WIN32
     src/Renderer.h
     src/Input.cpp
     src/Input.h
+    src/IconInteractionController.cpp
+    src/IconInteractionController.h
     src/Character.cpp
     src/Character.h
 )
@@ -41,6 +43,7 @@ target_link_libraries(DesktopCharacter PRIVATE
     dwrite
     ole32
     oleaut32
+    shell32
     shlwapi
     uuid
 )

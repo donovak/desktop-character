@@ -11,6 +11,7 @@ struct AppConfig {
     WindowMode windowMode = WindowMode::DesktopOverlay;
     bool transparentOverlayBackground = true;
     bool enableClickThrough = false;
+    bool dryRunInteractions = false;
 
     static AppConfig fromCommandLine(std::wstring_view commandLine);
 };

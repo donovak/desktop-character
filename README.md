@@ -4,7 +4,7 @@ Native Windows desktop character prototype built with C++20, Win32, Direct2D, an
 
 ## Current Phase
 
-Phase 3 is focused on read-only desktop icon awareness:
+Phase 4 is focused on safe, deliberate desktop icon interaction:
 
 - `DesktopOverlay` is the default mode.
 - `NormalWindow` preserves the Phase 1 overlapped test window for debugging.
@@ -13,9 +13,9 @@ Phase 3 is focused on read-only desktop icon awareness:
 - The overlay can use simple color-key transparency. This is not per-pixel alpha and is intentionally easy to remove later.
 - Click-through is disabled by default.
 - Desktop icons are discovered through Shell COM APIs and drawn as debug rectangles.
-- Icon discovery is read-only.
+- The character can highlight and explicitly open nearby icons with a cooldown.
 
-Out of scope for this phase: opening icons, selecting icons, moving icons, icon collision, WorkerW, wallpapers, weapons, and advanced physics.
+Out of scope for this phase: selecting icons, moving icons, icon rearranging, weapons, projectiles, WorkerW, wallpapers, and advanced physics.
 
 ## Switching Window Modes
 
@@ -42,9 +42,10 @@ Useful overlay flags:
 ```powershell
 .\build\Debug\DesktopCharacter.exe --desktop-overlay --opaque-overlay
 .\build\Debug\DesktopCharacter.exe --desktop-overlay --enable-click-through
+.\build\Debug\DesktopCharacter.exe --desktop-overlay --dry-run-interactions
 ```
 
-`--enable-click-through` is a clearly named debug flag and is off by default. Press `Esc` to close the prototype.
+`--enable-click-through` is a clearly named debug flag and is off by default. `--dry-run-interactions` logs what would open without launching anything. Press `Esc` to close the prototype.
 
 ## Desktop Icon Debug Overlay
 
@@ -56,6 +57,7 @@ The icon debug overlay is on by default.
 - Press `F5` to refresh the desktop icon cache.
 - Press `F6` to toggle red Shell anchor marks.
 - Press `F7` to toggle debug text labels.
+- Press `Space` or `E` to interact with the highlighted icon.
 - Press `Esc` to close the prototype.
 
 Icon rectangles are mapped from desktop Shell view coordinates into the app client area by converting the Shell view icon position to screen coordinates, then subtracting the app window client origin. This is intended primarily for `DesktopOverlay`; in `NormalWindow`, desktop icon rectangles may be outside or offset from the small debug window.
@@ -65,6 +67,19 @@ Debug colors:
 - Red cross: Shell-provided icon anchor/position.
 - Blue rectangle: estimated icon image area.
 - Yellow rectangle: estimated full hover/select area.
+- Green rectangle: currently interactable icon.
+
+## Icon Interaction
+
+Move the character so it overlaps or is very close to an icon's estimated hover/select rectangle. The current target is highlighted in green. Press `Space` or `E` once to interact.
+
+Launching uses `ShellExecuteExW` with the discovered filesystem path. Icons without a safe filesystem path are logged and skipped. Holding the interaction key does not repeatedly launch because input is debounced and interactions have a short cooldown.
+
+Use dry-run mode when testing:
+
+```powershell
+.\build\Debug\DesktopCharacter.exe --dry-run-interactions
+```
 
 Current limitations:
 
@@ -73,6 +88,7 @@ Current limitations:
 - Tuning values live near the top of `src/DesktopIconService.cpp` and `src/Renderer.cpp`; `IMAGE_LEFT_OFFSET` and `IMAGE_TOP_OFFSET` adjust the Shell-position-to-image relationship, and label width is derived from Shell spacing and clamped with `MIN_LABEL_WIDTH` / `MAX_LABEL_WIDTH`.
 - The cache refresh is manual/startup only; full shell change notifications are left for a later phase.
 - Some virtual or special desktop items may not have filesystem paths.
+- Interaction depends on estimated icon bounds and currently opens only icons with safe filesystem paths.
 
 ## Build From VSCode CMake Tools
 

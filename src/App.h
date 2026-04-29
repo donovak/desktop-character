@@ -4,6 +4,7 @@
 #include "Character.h"
 #include "DesktopIconService.h"
 #include "DesktopWindow.h"
+#include "IconInteractionController.h"
 #include "Input.h"
 #include "Renderer.h"
 
@@ -22,6 +23,7 @@ private:
     void update(float deltaSeconds);
     void render();
     void refreshDesktopIcons();
+    RECT characterScreenBounds() const;
 
     HINSTANCE m_instance = nullptr;
     int m_showCommand = SW_SHOWNORMAL;
@@ -31,6 +33,7 @@ private:
     Input m_input;
     Character m_character;
     DesktopIconService m_desktopIconService;
+    IconInteractionController m_iconInteractionController;
     std::vector<DesktopIcon> m_desktopIcons;
     IconDebugOverlaySettings m_iconDebugOverlaySettings;
     std::chrono::steady_clock::time_point m_lastFrameTime;

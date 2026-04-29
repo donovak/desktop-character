@@ -16,6 +16,7 @@ public:
     bool shouldToggleIconAnchors() const;
     bool shouldToggleIconLabels() const;
     bool shouldRefreshDesktopIcons() const;
+    bool shouldInteract() const;
 
 private:
     Vector2 m_movementDirection {};
@@ -26,10 +27,13 @@ private:
     bool m_shouldToggleIconAnchors = false;
     bool m_shouldToggleIconLabels = false;
     bool m_shouldRefreshDesktopIcons = false;
+    bool m_shouldInteract = false;
     bool m_wasF2Down = false;
     bool m_wasF3Down = false;
     bool m_wasF4Down = false;
     bool m_wasF5Down = false;
     bool m_wasF6Down = false;
     bool m_wasF7Down = false;
+    bool m_wasSpaceDown = false;
+    bool m_wasEDown = false;
 };

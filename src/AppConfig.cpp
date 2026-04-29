@@ -20,5 +20,9 @@ AppConfig AppConfig::fromCommandLine(std::wstring_view commandLine)
         config.enableClickThrough = true;
     }
 
+    if (commandLine.find(L"--dry-run-interactions") != std::wstring_view::npos) {
+        config.dryRunInteractions = true;
+    }
+
     return config;
 }

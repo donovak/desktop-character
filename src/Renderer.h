@@ -27,6 +27,7 @@ public:
         const Character& character,
         const std::vector<DesktopIcon>& desktopIcons,
         const IconDebugOverlaySettings& iconDebugOverlaySettings,
+        int interactableIconIndex,
         POINT clientScreenOrigin);
 
 private:
@@ -35,6 +36,7 @@ private:
     void drawIconDebugOverlay(
         const std::vector<DesktopIcon>& desktopIcons,
         const IconDebugOverlaySettings& settings,
+        int interactableIconIndex,
         POINT clientScreenOrigin);
 
     Microsoft::WRL::ComPtr<ID2D1Factory> m_factory;
@@ -45,6 +47,7 @@ private:
     Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_iconImageBoundsBrush;
     Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_iconAnchorBrush;
     Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_iconTextBrush;
+    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_interactableIconBrush;
     Microsoft::WRL::ComPtr<IDWriteFactory> m_writeFactory;
     Microsoft::WRL::ComPtr<IDWriteTextFormat> m_iconTextFormat;
     HWND m_hwnd = nullptr;

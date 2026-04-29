@@ -3,6 +3,7 @@
 #include "DebugLog.h"
 
 #include <algorithm>
+#include <cmath>
 #include <thread>
 
 namespace {
@@ -14,7 +15,8 @@ App::App(HINSTANCE instance, int showCommand, AppConfig config)
     : m_instance(instance),
       m_showCommand(showCommand),
       m_config(config),
-      m_character({ 320.0f, 240.0f })
+      m_character({ 320.0f, 240.0f }),
+      m_iconInteractionController(config.dryRunInteractions)
 {
 }
 
@@ -131,6 +133,11 @@ void App::update(float deltaSeconds)
     }
 
     m_character.update(m_input.movementDirection(), deltaSeconds);
+    m_iconInteractionController.updateInteractableIcon(m_desktopIcons, characterScreenBounds());
+
+    if (m_input.shouldInteract()) {
+        m_iconInteractionController.tryInteract(m_desktopIcons);
+    }
 }
 
 void App::render()
@@ -144,10 +151,24 @@ void App::render()
         m_character,
         m_desktopIcons,
         m_iconDebugOverlaySettings,
+        m_iconInteractionController.interactableIconIndex(),
         m_window.clientScreenOrigin());
 }
 
 void App::refreshDesktopIcons()
 {
     m_desktopIcons = m_desktopIconService.refresh();
+}
+
+RECT App::characterScreenBounds() const
+{
+    const POINT clientOrigin = m_window.clientScreenOrigin();
+    const D2D1_RECT_F bounds = m_character.bounds();
+
+    return {
+        clientOrigin.x + static_cast<LONG>(std::floor(bounds.left)),
+        clientOrigin.y + static_cast<LONG>(std::floor(bounds.top)),
+        clientOrigin.x + static_cast<LONG>(std::ceil(bounds.right)),
+        clientOrigin.y + static_cast<LONG>(std::ceil(bounds.bottom))
+    };
 }

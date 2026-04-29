@@ -6,6 +6,7 @@
 namespace {
 constexpr float DEBUG_HOVER_STROKE_WIDTH = 1.5f;
 constexpr float DEBUG_IMAGE_STROKE_WIDTH = 1.0f;
+constexpr float DEBUG_INTERACTABLE_STROKE_WIDTH = 3.0f;
 constexpr float DEBUG_ANCHOR_MARK_SIZE = 4.0f;
 constexpr float DEBUG_TEXT_TOP_GAP = 1.0f;
 
@@ -86,6 +87,7 @@ void Renderer::render(
     const Character& character,
     const std::vector<DesktopIcon>& desktopIcons,
     const IconDebugOverlaySettings& iconDebugOverlaySettings,
+    int interactableIconIndex,
     POINT clientScreenOrigin)
 {
     if (m_renderTarget == nullptr && !createDeviceResources(m_hwnd)) {
@@ -100,7 +102,7 @@ void Renderer::render(
     m_renderTarget->FillRectangle(characterRect, m_characterBrush.Get());
 
     if (iconDebugOverlaySettings.showOverlay) {
-        drawIconDebugOverlay(desktopIcons, iconDebugOverlaySettings, clientScreenOrigin);
+        drawIconDebugOverlay(desktopIcons, iconDebugOverlaySettings, interactableIconIndex, clientScreenOrigin);
     }
 
     const HRESULT result = m_renderTarget->EndDraw();
@@ -189,11 +191,22 @@ bool Renderer::createDeviceResources(HWND hwnd)
         return false;
     }
 
+    result = m_renderTarget->CreateSolidColorBrush(
+        D2D1::ColorF(0.25f, 1.0f, 0.35f, 1.0f),
+        m_interactableIconBrush.ReleaseAndGetAddressOf());
+
+    if (FAILED(result)) {
+        debugLog(L"CreateSolidColorBrush failed for interactable icon highlight.");
+        discardDeviceResources();
+        return false;
+    }
+
     return true;
 }
 
 void Renderer::discardDeviceResources()
 {
+    m_interactableIconBrush.Reset();
     m_iconTextBrush.Reset();
     m_iconAnchorBrush.Reset();
     m_iconImageBoundsBrush.Reset();
@@ -206,17 +219,20 @@ void Renderer::discardDeviceResources()
 void Renderer::drawIconDebugOverlay(
     const std::vector<DesktopIcon>& desktopIcons,
     const IconDebugOverlaySettings& settings,
+    int interactableIconIndex,
     POINT clientScreenOrigin)
 {
     if (m_iconHoverBoundsBrush == nullptr
         || m_iconImageBoundsBrush == nullptr
         || m_iconAnchorBrush == nullptr
         || m_iconTextBrush == nullptr
+        || m_interactableIconBrush == nullptr
         || m_iconTextFormat == nullptr) {
         return;
     }
 
-    for (const DesktopIcon& icon : desktopIcons) {
+    for (std::size_t index = 0; index < desktopIcons.size(); ++index) {
+        const DesktopIcon& icon = desktopIcons[index];
         const D2D1_RECT_F hoverRect = D2D1::RectF(
             static_cast<float>(icon.screenBounds.left - clientScreenOrigin.x),
             static_cast<float>(icon.screenBounds.top - clientScreenOrigin.y),
@@ -272,6 +288,13 @@ void Renderer::drawIconDebugOverlay(
                 m_iconTextFormat.Get(),
                 textRect,
                 m_iconTextBrush.Get());
+        }
+
+        if (static_cast<int>(index) == interactableIconIndex) {
+            m_renderTarget->DrawRectangle(
+                hoverRect,
+                m_interactableIconBrush.Get(),
+                DEBUG_INTERACTABLE_STROKE_WIDTH);
         }
     }
 }
