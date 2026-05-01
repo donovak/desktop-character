@@ -3,12 +3,18 @@
 #include "AppConfig.h"
 #include "DebugLog.h"
 
+#include <string>
+
 namespace {
 constexpr float DEBUG_HOVER_STROKE_WIDTH = 1.5f;
 constexpr float DEBUG_IMAGE_STROKE_WIDTH = 1.0f;
 constexpr float DEBUG_INTERACTABLE_STROKE_WIDTH = 3.0f;
+constexpr float DEBUG_BUMPED_STROKE_WIDTH = 3.0f;
 constexpr float DEBUG_ANCHOR_MARK_SIZE = 4.0f;
 constexpr float DEBUG_TEXT_TOP_GAP = 1.0f;
+constexpr float DASH_VISUAL_STROKE_WIDTH = 5.0f;
+constexpr wchar_t CHARACTER_SPRITE_PATH[] = L"assets\\sprites\\hamster_sheet.png";
+constexpr wchar_t CHARACTER_SPRITE_BUILD_PATH[] = L"..\\..\\assets\\sprites\\hamster_sheet.png";
 
 D2D1_COLOR_F overlayTransparentColor()
 {
@@ -16,6 +22,19 @@ D2D1_COLOR_F overlayTransparentColor()
         OVERLAY_TRANSPARENT_KEY_R / 255.0f,
         OVERLAY_TRANSPARENT_KEY_G / 255.0f,
         OVERLAY_TRANSPARENT_KEY_B / 255.0f);
+}
+
+std::wstring findCharacterSpritePath()
+{
+    if (GetFileAttributesW(CHARACTER_SPRITE_PATH) != INVALID_FILE_ATTRIBUTES) {
+        return CHARACTER_SPRITE_PATH;
+    }
+
+    if (GetFileAttributesW(CHARACTER_SPRITE_BUILD_PATH) != INVALID_FILE_ATTRIBUTES) {
+        return CHARACTER_SPRITE_BUILD_PATH;
+    }
+
+    return CHARACTER_SPRITE_PATH;
 }
 }
 
@@ -31,6 +50,16 @@ bool Renderer::initialize(HWND hwnd, bool transparentBackground)
     if (FAILED(factoryResult)) {
         debugLog(L"D2D1CreateFactory failed.");
         return false;
+    }
+
+    const HRESULT wicFactoryResult = CoCreateInstance(
+        CLSID_WICImagingFactory,
+        nullptr,
+        CLSCTX_INPROC_SERVER,
+        IID_PPV_ARGS(m_wicFactory.GetAddressOf()));
+
+    if (FAILED(wicFactoryResult)) {
+        debugLog(L"CoCreateInstance failed for WIC imaging factory; character will use rectangle fallback.");
     }
 
     const HRESULT writeFactoryResult = DWriteCreateFactory(
@@ -88,6 +117,8 @@ void Renderer::render(
     const std::vector<DesktopIcon>& desktopIcons,
     const IconDebugOverlaySettings& iconDebugOverlaySettings,
     int interactableIconIndex,
+    int bumpedIconIndex,
+    bool controlModeEnabled,
     POINT clientScreenOrigin)
 {
     if (m_renderTarget == nullptr && !createDeviceResources(m_hwnd)) {
@@ -98,11 +129,15 @@ void Renderer::render(
     m_renderTarget->Clear(
         m_transparentBackground ? overlayTransparentColor() : D2D1::ColorF(0.08f, 0.09f, 0.10f));
 
-    const D2D1_RECT_F characterRect = character.bounds();
-    m_renderTarget->FillRectangle(characterRect, m_characterBrush.Get());
+    drawDashVisual(character);
+    drawCharacter(character);
 
     if (iconDebugOverlaySettings.showOverlay) {
-        drawIconDebugOverlay(desktopIcons, iconDebugOverlaySettings, interactableIconIndex, clientScreenOrigin);
+        drawIconDebugOverlay(desktopIcons, iconDebugOverlaySettings, interactableIconIndex, bumpedIconIndex, clientScreenOrigin);
+    }
+
+    if (controlModeEnabled) {
+        drawControlModeIndicator();
     }
 
     const HRESULT result = m_renderTarget->EndDraw();
@@ -201,11 +236,178 @@ bool Renderer::createDeviceResources(HWND hwnd)
         return false;
     }
 
+    result = m_renderTarget->CreateSolidColorBrush(
+        D2D1::ColorF(1.0f, 0.25f, 0.95f, 1.0f),
+        m_bumpedIconBrush.ReleaseAndGetAddressOf());
+
+    if (FAILED(result)) {
+        debugLog(L"CreateSolidColorBrush failed for bumped icon highlight.");
+        discardDeviceResources();
+        return false;
+    }
+
+    result = m_renderTarget->CreateSolidColorBrush(
+        D2D1::ColorF(0.15f, 0.95f, 1.0f, 0.75f),
+        m_dashVisualBrush.ReleaseAndGetAddressOf());
+
+    if (FAILED(result)) {
+        debugLog(L"CreateSolidColorBrush failed for dash visual.");
+        discardDeviceResources();
+        return false;
+    }
+
+    result = m_renderTarget->CreateSolidColorBrush(
+        D2D1::ColorF(0.12f, 1.0f, 0.55f, 0.95f),
+        m_controlModeBrush.ReleaseAndGetAddressOf());
+
+    if (FAILED(result)) {
+        debugLog(L"CreateSolidColorBrush failed for control mode indicator.");
+        discardDeviceResources();
+        return false;
+    }
+
+    loadCharacterSpriteSheet();
     return true;
+}
+
+bool Renderer::loadCharacterSpriteSheet()
+{
+    if (m_wicFactory == nullptr || m_renderTarget == nullptr) {
+        return false;
+    }
+
+    const std::wstring spritePath = findCharacterSpritePath();
+
+    Microsoft::WRL::ComPtr<IWICBitmapDecoder> decoder;
+    HRESULT result = m_wicFactory->CreateDecoderFromFilename(
+        spritePath.c_str(),
+        nullptr,
+        GENERIC_READ,
+        WICDecodeMetadataCacheOnLoad,
+        decoder.GetAddressOf());
+
+    if (FAILED(result)) {
+        debugLog(std::wstring(L"Failed to load character sprite sheet: ") + spritePath);
+        return false;
+    }
+
+    Microsoft::WRL::ComPtr<IWICBitmapFrameDecode> frame;
+    result = decoder->GetFrame(0, frame.GetAddressOf());
+    if (FAILED(result)) {
+        debugLog(L"Failed to read first frame from character sprite sheet.");
+        return false;
+    }
+
+    Microsoft::WRL::ComPtr<IWICFormatConverter> converter;
+    result = m_wicFactory->CreateFormatConverter(converter.GetAddressOf());
+    if (FAILED(result)) {
+        debugLog(L"Failed to create WIC format converter for character sprite sheet.");
+        return false;
+    }
+
+    result = converter->Initialize(
+        frame.Get(),
+        GUID_WICPixelFormat32bppPBGRA,
+        WICBitmapDitherTypeNone,
+        nullptr,
+        0.0,
+        WICBitmapPaletteTypeMedianCut);
+
+    if (FAILED(result)) {
+        debugLog(L"Failed to convert character sprite sheet to PBGRA.");
+        return false;
+    }
+
+    result = m_renderTarget->CreateBitmapFromWicBitmap(
+        converter.Get(),
+        nullptr,
+        m_characterSpriteSheet.ReleaseAndGetAddressOf());
+
+    if (FAILED(result)) {
+        debugLog(L"Failed to create Direct2D bitmap for character sprite sheet.");
+        return false;
+    }
+
+    debugLog(std::wstring(L"Loaded character sprite sheet: ") + spritePath);
+    return true;
+}
+
+void Renderer::drawCharacter(const Character& character)
+{
+    if (m_characterSpriteSheet == nullptr) {
+        m_renderTarget->FillRectangle(character.bounds(), m_characterBrush.Get());
+        return;
+    }
+
+    const D2D1_RECT_F destination = character.spriteDestinationBounds();
+    const D2D1_RECT_F source = character.spriteSourceRect();
+
+    D2D1_MATRIX_3X2_F oldTransform {};
+    m_renderTarget->GetTransform(&oldTransform);
+
+    const float centerX = (destination.left + destination.right) * 0.5f;
+    const float centerY = (destination.top + destination.bottom) * 0.5f;
+    D2D1_MATRIX_3X2_F spriteTransform = D2D1::Matrix3x2F::Identity();
+
+    if (!character.isFacingRight()) {
+        spriteTransform = D2D1::Matrix3x2F::Scale(
+            D2D1::SizeF(-1.0f, 1.0f),
+            D2D1::Point2F(centerX, centerY))
+            * spriteTransform;
+    }
+
+    m_renderTarget->SetTransform(spriteTransform * oldTransform);
+
+    m_renderTarget->DrawBitmap(
+        m_characterSpriteSheet.Get(),
+        destination,
+        1.0f,
+        D2D1_BITMAP_INTERPOLATION_MODE_LINEAR,
+        source);
+
+    m_renderTarget->SetTransform(oldTransform);
+}
+
+void Renderer::drawDashVisual(const Character& character)
+{
+    if (!character.isDashVisualActive() || m_dashVisualBrush == nullptr) {
+        return;
+    }
+
+    const Vector2 start = character.dashStartPosition();
+    const Vector2 end = character.dashEndPosition();
+    m_renderTarget->DrawLine(
+        D2D1::Point2F(start.x, start.y),
+        D2D1::Point2F(end.x, end.y),
+        m_dashVisualBrush.Get(),
+        DASH_VISUAL_STROKE_WIDTH);
+
+    const D2D1_ELLIPSE endFlash = D2D1::Ellipse(D2D1::Point2F(end.x, end.y), 16.0f, 16.0f);
+    m_renderTarget->DrawEllipse(endFlash, m_dashVisualBrush.Get(), 2.0f);
+}
+
+void Renderer::drawControlModeIndicator()
+{
+    if (m_controlModeBrush == nullptr || m_iconTextFormat == nullptr) {
+        return;
+    }
+
+    const D2D1_RECT_F indicatorRect = D2D1::RectF(10.0f, 10.0f, 150.0f, 30.0f);
+    m_renderTarget->DrawRectangle(indicatorRect, m_controlModeBrush.Get(), 1.5f);
+    m_renderTarget->DrawTextW(
+        L"CONTROL MODE",
+        12,
+        m_iconTextFormat.Get(),
+        indicatorRect,
+        m_controlModeBrush.Get());
 }
 
 void Renderer::discardDeviceResources()
 {
+    m_controlModeBrush.Reset();
+    m_dashVisualBrush.Reset();
+    m_characterSpriteSheet.Reset();
+    m_bumpedIconBrush.Reset();
     m_interactableIconBrush.Reset();
     m_iconTextBrush.Reset();
     m_iconAnchorBrush.Reset();
@@ -220,6 +422,7 @@ void Renderer::drawIconDebugOverlay(
     const std::vector<DesktopIcon>& desktopIcons,
     const IconDebugOverlaySettings& settings,
     int interactableIconIndex,
+    int bumpedIconIndex,
     POINT clientScreenOrigin)
 {
     if (m_iconHoverBoundsBrush == nullptr
@@ -227,6 +430,7 @@ void Renderer::drawIconDebugOverlay(
         || m_iconAnchorBrush == nullptr
         || m_iconTextBrush == nullptr
         || m_interactableIconBrush == nullptr
+        || m_bumpedIconBrush == nullptr
         || m_iconTextFormat == nullptr) {
         return;
     }
@@ -295,6 +499,13 @@ void Renderer::drawIconDebugOverlay(
                 hoverRect,
                 m_interactableIconBrush.Get(),
                 DEBUG_INTERACTABLE_STROKE_WIDTH);
+        }
+
+        if (static_cast<int>(index) == bumpedIconIndex) {
+            m_renderTarget->DrawRectangle(
+                hoverRect,
+                m_bumpedIconBrush.Get(),
+                DEBUG_BUMPED_STROKE_WIDTH);
         }
     }
 }

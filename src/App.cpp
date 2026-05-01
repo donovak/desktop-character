@@ -4,11 +4,22 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 #include <thread>
 
 namespace {
 constexpr float MAX_DELTA_SECONDS = 0.1f;
 constexpr auto TARGET_FRAME_TIME = std::chrono::milliseconds(16);
+constexpr bool ENABLE_ICON_COLLISION_EXPERIMENT = true;
+
+D2D1_RECT_F screenRectToClientRect(const RECT& screenRect, POINT clientOrigin)
+{
+    return D2D1::RectF(
+        static_cast<float>(screenRect.left - clientOrigin.x),
+        static_cast<float>(screenRect.top - clientOrigin.y),
+        static_cast<float>(screenRect.right - clientOrigin.x),
+        static_cast<float>(screenRect.bottom - clientOrigin.y));
+}
 }
 
 App::App(HINSTANCE instance, int showCommand, AppConfig config)
@@ -132,12 +143,64 @@ void App::update(float deltaSeconds)
         refreshDesktopIcons();
     }
 
+    if (m_input.shouldJump()) {
+        m_character.startJump();
+    }
+
     m_character.update(m_input.movementDirection(), deltaSeconds);
+
+    const POINT clientOrigin = m_window.clientScreenOrigin();
+    std::vector<D2D1_RECT_F> iconClientBounds;
+    iconClientBounds.reserve(m_desktopIcons.size());
+    for (const DesktopIcon& icon : m_desktopIcons) {
+        iconClientBounds.push_back(screenRectToClientRect(icon.screenBounds, clientOrigin));
+    }
+
+    bool dashedThisFrame = false;
+    const int dashDirection = m_input.consumeFastRollDashDirection();
+    if (dashDirection != 0 && m_character.canDash()) {
+        const Character::DashResult dashResult = m_character.tryFastRollDash(dashDirection, iconClientBounds);
+        if (dashResult.dashed) {
+            dashedThisFrame = true;
+            debugLog(std::wstring(L"Fast-roll dash ")
+                + (dashDirection < 0 ? L"left" : L"right")
+                + L": ("
+                + std::to_wstring(static_cast<int>(std::round(dashResult.startPosition.x)))
+                + L", "
+                + std::to_wstring(static_cast<int>(std::round(dashResult.startPosition.y)))
+                + L") -> ("
+                + std::to_wstring(static_cast<int>(std::round(dashResult.endPosition.x)))
+                + L", "
+                + std::to_wstring(static_cast<int>(std::round(dashResult.endPosition.y)))
+                + L")");
+        }
+    }
+
+    if (ENABLE_ICON_COLLISION_EXPERIMENT && !dashedThisFrame) {
+        const bool strongCollision = m_character.isFastRolling();
+
+        for (std::size_t index = 0; index < iconClientBounds.size(); ++index) {
+            if (m_character.resolveIconCollision(iconClientBounds[index], strongCollision)) {
+                m_iconInteractionController.noteIconCollision(
+                    m_desktopIcons,
+                    static_cast<int>(index),
+                    strongCollision);
+                break;
+            }
+        }
+    }
+
     m_iconInteractionController.updateInteractableIcon(m_desktopIcons, characterScreenBounds());
 
-    if (m_input.shouldInteract()) {
-        m_iconInteractionController.tryInteract(m_desktopIcons);
+    if (m_input.shouldInteract()
+        && m_character.canStartInteraction()
+        && m_iconInteractionController.tryInteract(
+            m_desktopIcons,
+            std::chrono::milliseconds(m_character.interactionLaunchDelayMilliseconds()))) {
+        m_character.startInteraction();
     }
+
+    m_iconInteractionController.updatePendingLaunch();
 }
 
 void App::render()
@@ -152,6 +215,8 @@ void App::render()
         m_desktopIcons,
         m_iconDebugOverlaySettings,
         m_iconInteractionController.interactableIconIndex(),
+        m_iconInteractionController.bumpedIconIndex(),
+        m_input.isControlModeEnabled(),
         m_window.clientScreenOrigin());
 }
 

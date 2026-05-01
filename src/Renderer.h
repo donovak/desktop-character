@@ -5,6 +5,7 @@
 
 #include <d2d1.h>
 #include <dwrite.h>
+#include <wincodec.h>
 #include <vector>
 #include <wrl/client.h>
 #include <windows.h>
@@ -28,15 +29,22 @@ public:
         const std::vector<DesktopIcon>& desktopIcons,
         const IconDebugOverlaySettings& iconDebugOverlaySettings,
         int interactableIconIndex,
+        int bumpedIconIndex,
+        bool controlModeEnabled,
         POINT clientScreenOrigin);
 
 private:
     bool createDeviceResources(HWND hwnd);
     void discardDeviceResources();
+    bool loadCharacterSpriteSheet();
+    void drawCharacter(const Character& character);
+    void drawDashVisual(const Character& character);
+    void drawControlModeIndicator();
     void drawIconDebugOverlay(
         const std::vector<DesktopIcon>& desktopIcons,
         const IconDebugOverlaySettings& settings,
         int interactableIconIndex,
+        int bumpedIconIndex,
         POINT clientScreenOrigin);
 
     Microsoft::WRL::ComPtr<ID2D1Factory> m_factory;
@@ -48,6 +56,11 @@ private:
     Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_iconAnchorBrush;
     Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_iconTextBrush;
     Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_interactableIconBrush;
+    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_bumpedIconBrush;
+    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_dashVisualBrush;
+    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_controlModeBrush;
+    Microsoft::WRL::ComPtr<ID2D1Bitmap> m_characterSpriteSheet;
+    Microsoft::WRL::ComPtr<IWICImagingFactory> m_wicFactory;
     Microsoft::WRL::ComPtr<IDWriteFactory> m_writeFactory;
     Microsoft::WRL::ComPtr<IDWriteTextFormat> m_iconTextFormat;
     HWND m_hwnd = nullptr;

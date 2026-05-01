@@ -46,4 +46,5 @@ target_link_libraries(DesktopCharacter PRIVATE
     shell32
     shlwapi
     uuid
+    windowscodecs
 )
